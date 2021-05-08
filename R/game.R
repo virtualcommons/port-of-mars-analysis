@@ -1,7 +1,7 @@
 library(magrittr)
 
-game_events_load <- function() {
-  readr::read_csv("input/raw/2021-03/games/1/processed/gameEvent.csv") %>%
+game_events_load <- function(prefix) {
+  readr::read_csv(fs::path(prefix, "gameEvent.csv")) %>%
     # first record in dump is recorded twice so remove one with improperly serialized snapshot
     dplyr::group_by(id) %>%
     dplyr::filter(stringr::str_starts(payload, "\\[", negate = TRUE)) %>%
@@ -10,17 +10,18 @@ game_events_load <- function() {
     dplyr::mutate(timestamp = lubridate::parse_date_time(dateCreated, orders="amdYHMS"))
 }
 
-game_players_load <- function() {
-  readr::read_csv("input/raw/2021-03/games/1/processed/player.csv")
+game_players_load <- function(prefix) {
+  readr::read_csv(fs::path(prefix, "player.csv"))
 }
 
-game_player_investments_load <- function() {
-  readr::read_csv("input/raw/2021-03/games/1/processed/playerInvestment.csv")
+game_player_investments_load <- function(prefix) {
+  readr::read_csv(fs::path(prefix, "playerInvestment.csv"))
 }
 
-game_keys_get <- function(game_events, players) {
+game_keys_get <- function(game_events, players, max_rounds) {
   role_ids <- unique(players$role)
   game_ids <- unique(game_events$gameId)
+  rounds <- 1:max_rounds
   
   game_round <- game_events %>% 
     dplyr::distinct(gameId, roundFinal) %>% 
@@ -35,7 +36,12 @@ game_keys_get <- function(game_events, players) {
     game_round = game_round,
     game_round_role = tidyr::crossing(
       game_round,
-      tibble::tibble(role = role_ids))
+      tibble::tibble(role = role_ids)),
+    game_round_role_all = tidyr::crossing(
+      tibble::tibble(gameId = game_ids),
+      tibble::tibble(round = rounds),
+      tibble::tibble(role = role_ids)
+    )
   )
 }
 
@@ -218,64 +224,69 @@ game_player_used_screw_cards_by_round_get <- function(game_events, game_round_ro
     tidyr::replace_na(replace = list(screw_card_small = FALSE, screw_card_large = FALSE))
 }
 
-game_round_data_get <- function() {
-  game_events <- game_events_load()
-  player_investments <- game_player_investments_load()
-  players <- game_players_load()
+tournament_round_load <- function(tournament_dir, tournament_round, max_game_rounds) {
+  base_path <- fs::path("input/raw/", tournament_dir, "games", tournament_round, "processed")
+  game_events <- game_events_load(base_path)
+  player_investments <- game_player_investments_load(base_path)
+  players <- game_players_load(base_path)
+  
+  assertthat::assert_that(max(game_events$roundFinal) <= max_game_rounds)
   
   game_keys <- game_keys_get(
     game_events = game_events,
-    players = players
+    players = players,
+    max_rounds = max_game_rounds
   )
   
   game_role <- game_keys$game_role
   game_round <- game_keys$game_round
   game_round_role <- game_keys$game_round_role
+  game_round_role_all <- game_keys$game_round_role_all
   
-  game_chat_event_count_by_round <- game_chat_event_count_by_round_get(
+  chat_event_count_by_round <- game_chat_event_count_by_round_get(
     game_events = game_events,
     game_round_role = game_round_role
   )
   
-  game_invest_system_health_by_round <- game_invest_system_health_by_round_get(
+  invest_system_health_by_round <- game_invest_system_health_by_round_get(
     player_investments = player_investments,
     game_round_role = game_round_role
   )
   
-  game_system_health_at_round_start <- game_system_health_at_round_start_get(game_events)
+  system_health_at_round_start <- game_system_health_at_round_start_get(game_events)
   
-  game_trades_accepted_count_by_round <- game_trades_accepted_count_by_round_get(
+  trades_accepted_count_by_round <- game_trades_accepted_count_by_round_get(
     game_events,
     game_round_role = game_round_role
   )
   
-  game_phase_duration_by_round <- game_phase_duration_by_round_get(game_events)
+  phase_duration_by_round <- game_phase_duration_by_round_get(game_events)
   
-  game_end_player_points <- game_end_player_points_get(
+  end_player_points <- game_end_player_points_get(
     game_events,
     roles = game_keys$role
   )
   
-  game_bot_statistics <- game_bot_statistics_get(
+  bot_statistics <- game_bot_statistics_get(
     game_events,
     game_role = game_role
   )
   
-  game_player_used_screw_cards_by_round <- game_player_used_screw_cards_by_round_get(
+  player_used_screw_cards_by_round <- game_player_used_screw_cards_by_round_get(
     game_events,
     game_round_role = game_round_role
   )
   
-  stopifnot(nrow(game_role) == nrow(game_end_player_points))
-  stopifnot(nrow(game_role) == nrow(game_bot_statistics))
+  assertthat::assert_that(nrow(game_role) == nrow(end_player_points))
+  assertthat::assert_that(nrow(game_role) == nrow(bot_statistics))
 
-  stopifnot(nrow(game_round) == nrow(game_system_health_at_round_start))
-  stopifnot(nrow(game_round) == nrow(game_phase_duration_by_round))
+  assertthat::assert_that(nrow(game_round) == nrow(system_health_at_round_start))
+  assertthat::assert_that(nrow(game_round) == nrow(phase_duration_by_round))
   
-  stopifnot(nrow(game_round_role) == nrow(game_chat_event_count_by_round))
-  stopifnot(nrow(game_round_role) == nrow(game_invest_system_health_by_round))
-  stopifnot(nrow(game_round_role) == nrow(game_player_used_screw_cards_by_round))
-  stopifnot(nrow(game_round_role) == nrow(game_trades_accepted_count_by_round))
+  assertthat::assert_that(nrow(game_round_role) == nrow(chat_event_count_by_round))
+  assertthat::assert_that(nrow(game_round_role) == nrow(invest_system_health_by_round))
+  assertthat::assert_that(nrow(game_round_role) == nrow(player_used_screw_cards_by_round))
+  assertthat::assert_that(nrow(game_round_role) == nrow(trades_accepted_count_by_round))
   
   game_role_key <- GAME_JOIN_KEYS$game_role
   game_round_key <- GAME_JOIN_KEYS$game_round
@@ -283,39 +294,70 @@ game_round_data_get <- function() {
   
   game_role_data <- game_role %>%
     dplyr::left_join(
-      game_end_player_points,
+      end_player_points,
       by = game_role_key
     ) %>%
     dplyr::left_join(
-      game_bot_statistics,
+      bot_statistics,
       by = game_role_key
     )
   
-  game_round_role_data <- game_round_role %>%
+  game_round_role_data <- game_round_role_all %>%
     dplyr::left_join(
-      game_system_health_at_round_start,
+      system_health_at_round_start,
       by = game_round_key
     ) %>%
     dplyr::left_join(
-      game_phase_duration_by_round,
+      phase_duration_by_round,
       by = game_round_key
     ) %>%
     dplyr::left_join(
-      game_chat_event_count_by_round,
+      chat_event_count_by_round,
       by = game_round_role_key
     ) %>%
     dplyr::left_join(
-      game_invest_system_health_by_round,
+      invest_system_health_by_round,
       by = game_round_role_key
     ) %>%
     dplyr::left_join(
-      game_trades_accepted_count_by_round,
+      trades_accepted_count_by_round,
       by = game_round_role_key
     ) %>%
     dplyr::left_join(
-      game_player_used_screw_cards_by_round,
+      player_used_screw_cards_by_round,
       by = game_round_role_key
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = round,
+      names_glue = "{.value}_round{round}",
+      values_from = !c(gameId, round, role)
     )
+  
+  assertthat::assert_that(nrow(game_role_data) == nrow(game_round_role_data))
+
+  game_round_role_data %>%
+    dplyr::left_join(game_role_data, by = game_role_key) %>%
+    dplyr::mutate(
+      tournament = tournament_dir,
+      tournament_round = tournament_round  
+    ) %>%
+    dplyr::rename(game_id = gameId) %>%
+    dplyr::relocate(tournament, tournament_round)
 }
 
-game_round_role_data <- game_round_data_get()
+tournament_load <- function(tournament_dir, max_game_rounds) {
+  tournament_prefix <- fs::path("input/raw", tournament_dir, "games")
+  tournament_rounds <- fs::path_file(fs::dir_ls(tournament_prefix))
+  
+  dplyr::bind_rows(purrr::map(
+    tournament_rounds,
+    function(tournament_round) 
+      tournament_round_load(
+        tournament_dir = tournament_dir,
+        tournament_round = tournament_round,
+        max_game_rounds = max_game_rounds
+      )
+  ))
+}
+
+tournament_data <- tournament_load(tournament_dir = "2021-03", max_game_rounds = 11)
