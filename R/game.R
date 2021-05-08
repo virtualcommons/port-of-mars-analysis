@@ -10,71 +10,88 @@ game_events_load <- function() {
     dplyr::mutate(timestamp = lubridate::parse_date_time(dateCreated, orders="amdYHMS"))
 }
 
-players_load <- function() {
+game_players_load <- function() {
   readr::read_csv("input/raw/2021-03/games/1/processed/player.csv")
 }
 
-player_investments_load <- function() {
+game_player_investments_load <- function() {
   readr::read_csv("input/raw/2021-03/games/1/processed/playerInvestment.csv")
 }
 
-game_events <- game_events_load()
-players <- players_load()
-player_investments <- player_investments_load()
-
-ROLES <- unique(players$role) 
-GAME_IDS <- unique(players$gameId)
-PKS <- tidyr::crossing(
-  tibble::tibble(gameId = GAME_IDS),
-  tibble::tibble(role = ROLES))
-GAME_EVENTS_IDS <- tidyr::crossing(
-  game_events %>% 
+game_keys_get <- function(game_events, players) {
+  role_ids <- unique(players$role)
+  game_ids <- unique(game_events$gameId)
+  
+  game_round <- game_events %>% 
     dplyr::distinct(gameId, roundFinal) %>% 
-    dplyr::rename(round = "roundFinal"),
-  tibble::tibble(role = ROLES))
+    dplyr::rename(round = "roundFinal")
+  
+  list(
+    role = role_ids,
+    game_role = tidyr::crossing(
+      tibble::tibble(gameId = game_ids),
+      tibble::tibble(role = role_ids)
+    ),
+    game_round = game_round,
+    game_round_role = tidyr::crossing(
+      game_round,
+      tibble::tibble(role = role_ids))
+  )
+}
 
-JOIN_CRITERIA_ROUND_FINAL <- c("gameId" = "gameId", "round" = "roundFinal", "role" = "role")
+GAME_JOIN_KEYS <- list(
+  game_role = c(
+    "gameId" = "gameId",
+    "role" = "role"
+  ),
+  
+  game_round = c(
+    "gameId" = "gameId",
+    "round" = "round"
+  ),
+  
+  game_round_role = c(
+    "gameId" = "gameId",
+    "round" = "round",
+    "role" = "role"
+  )
+)
 
-# Chat?
-game_count_chat_events_by_round_get <- function(game_events) {
+# Chat? gameId, round
+game_chat_event_count_by_round_get <- function(game_events, game_round_role) {
   chat_counts <- game_events %>%
     dplyr::filter(type == "sent-chat-message") %>%
     dplyr::filter(role != "Server") %>%
-    dplyr::group_by(gameId, roundFinal, role) %>%
+    dplyr::rename(round = roundFinal) %>%
+    dplyr::group_by(gameId, round, role) %>%
     dplyr::summarise(chat_message_count = dplyr::n())
-  GAME_EVENTS_IDS %>%
-    dplyr::left_join(chat_counts, by = JOIN_CRITERIA_ROUND_FINAL) %>%
+  game_round_role %>%
+    dplyr::left_join(chat_counts, by = GAME_JOIN_KEYS$game_round_role) %>%
     tidyr::replace_na(replace = list(chat_message_count = 0))
 }
 
-game_count_chat_events_by_round <- game_count_chat_events_by_round_get(game_events)
-
 # SH?
-game_invest_system_health_get <- function(player_investments) {
+game_invest_system_health_by_round_get <- function(player_investments, game_round_role) {
   system_health <- player_investments %>%
     dplyr::filter(name == "finalInvestment") %>%
     dplyr::filter(investment == "systemHealth") %>%
-    dplyr::select(gameId, roundFinal, role, sh = value)
-  GAME_EVENTS_IDS %>%
-    dplyr::left_join(system_health, by = JOIN_CRITERIA_ROUND_FINAL)
+    dplyr::rename(round = roundFinal) %>%
+    dplyr::select(gameId, round, role, investment_system_health = value)
+  game_round_role %>%
+    dplyr::left_join(system_health, by = GAME_JOIN_KEYS$game_round_role)
 }
 
-game_invest_system_health <- game_invest_system_health_get(player_investments)
-
-#
 game_system_health_at_round_start_get <- function(game_events) {
   game_events %>%
     dplyr::group_by(gameId, roundFinal) %>%
     dplyr::filter(id == min(id)) %>%
-    dplyr::select(id, gameId, roundFinal, systemHealthFinal, phaseFinal) %>%
-    dplyr::distinct(gameId, roundFinal, systemHealthFinal) %>%
+    dplyr::select(gameId, roundFinal, systemHealthFinal) %>%
+    dplyr::rename(round = roundFinal, system_health = systemHealthFinal) %>%
     dplyr::ungroup()
 }
 
-game_system_health_at_round_start <- game_system_health_at_round_start_get(game_events)
-
 # T?
-game_count_trade_events_by_round_get <- function(game_events) {
+game_trades_accepted_count_by_round_get <- function(game_events, game_round_role) {
   sent_trade_info_get <- function(payload) {
     trade <- jsonlite::fromJSON(payload)
     list(
@@ -106,12 +123,13 @@ game_count_trade_events_by_round_get <- function(game_events) {
     dplyr::inner_join(accepted_trades, by = c("trade_id" = "trade_id")) %>%
     dplyr::select(-trade_id) %>%
     tidyr::pivot_longer(cols=dplyr::all_of(c("sender", "recipient")), names_to="trade_role", values_to="role") %>%
-    dplyr::group_by(gameId, roundFinal, role) %>%
+    dplyr::rename(round = roundFinal) %>%
+    dplyr::group_by(gameId, round, role) %>%
     dplyr::summarise(trades_accepted_count = dplyr::n())
-  trades
+  game_round_role %>%
+    dplyr::left_join(trades, GAME_JOIN_KEYS$game_round_role) %>%
+    tidyr::replace_na(replace = list(trades_accepted_count = 0))
 }
-
-game_count_trade_events_by_round <- game_count_trade_events_by_round_get(game_events)
 
 # Time-{Phase}?
 game_phase_duration_by_round_get <- function(game_events) {
@@ -133,13 +151,12 @@ game_phase_duration_by_round_get <- function(game_events) {
   
   duration %>%
     dplyr::select(gameId, round, phase, duration) %>%
-    tidyr::pivot_wider(names_from = phase, names_prefix = "duration_", values_from = duration)
+    tidyr::pivot_wider(names_from = phase, names_prefix = "duration_", values_from = duration) %>%
+    dplyr::rename(duration_new_round = duration_newRound)
 }
 
-game_phase_duration_by_round <- game_phase_duration_by_round_get(game_events)
-
 # points
-game_end_player_points_get <- function(game_events) {
+game_end_player_points_get <- function(game_events, roles) {
   role_points_get <- function(payload) {
     points <- jsonlite::fromJSON(payload)
     points
@@ -152,7 +169,7 @@ game_end_player_points_get <- function(game_events) {
   events_end_game %>%
     dplyr::bind_cols(purrr::map_dfr(events_end_game$payload, role_points_get)) %>%
     dplyr::select(-payload) %>%
-    tidyr::pivot_longer(cols = dplyr::all_of(ROLES), names_to="role", values_to="points") %>%
+    tidyr::pivot_longer(cols = dplyr::all_of(roles), names_to="role", values_to="points") %>%
     dplyr::group_by(gameId) %>%
     dplyr::mutate(survived = type == "entered-victory-phase") %>%
     dplyr::mutate(won = (points == max(points)) & survived) %>%
@@ -160,28 +177,24 @@ game_end_player_points_get <- function(game_events) {
     dplyr::ungroup()
 }
 
-game_end_player_points <- game_end_player_points_get(game_events)
-
 # bot, anyBotGroup
-game_bot_statistics_get <- function(game_events) {
+game_bot_statistics_get <- function(game_events, game_role) {
   partial_bct <- game_events %>% 
     dplyr::filter(type == "bot-control-taken") %>% 
     dplyr::select(gameId, payload) %>%
     dplyr::mutate(role = purrr::map_chr(payload, function(p) jsonlite::fromJSON(p)$role)) %>%
     dplyr::distinct(gameId, role) %>%
     dplyr::mutate(bot = TRUE) 
-  PKS %>%
-    dplyr::left_join(partial_bct, by = c("gameId" = "gameId", "role" = "role")) %>%
+  game_role %>%
+    dplyr::left_join(partial_bct, by = GAME_JOIN_KEYS$game_role) %>%
     dplyr::mutate(bot=tidyr::replace_na(bot, FALSE)) %>%
     dplyr::group_by(gameId) %>%
     dplyr::mutate(anyBot = as.logical(max(bot))) %>%
     dplyr::ungroup()
 }
 
-game_bot_statistics <- game_bot_statistics_get(game_events)
-
 # screw card small, screw card large
-game_player_used_screw_cards_get <- function(game_events) {
+game_player_used_screw_cards_by_round_get <- function(game_events, game_round_role) {
   get_purchases <- function(payload) {
     purchase_event <- jsonlite::fromJSON(payload)
     sh <- purchase_event$accomplishment$systemHealth
@@ -197,9 +210,112 @@ game_player_used_screw_cards_get <- function(game_events) {
     dplyr::bind_cols(purrr::map_df(purchases$payload, get_purchases)) %>%
     dplyr::group_by(gameId, role, roundFinal) %>%
     dplyr::summarise(
-      small_screw_card = as.logical(max(small_screw_card)),
-      large_screw_card = as.logical(max(large_screw_card)))
-  GAME_EVENTS_IDS %>%
-    dplyr::left_join(purchases, by = c("gameId" = "gameId", "round" = "roundFinal", "role" = "role")) %>%
-    tidyr::replace_na(replace = list(small_screw_card = FALSE, large_screw_card = FALSE))
+      screw_card_small = as.logical(max(small_screw_card)),
+      screw_card_large = as.logical(max(large_screw_card))) %>%
+    dplyr::rename(round = roundFinal)
+  game_round_role %>%
+    dplyr::left_join(purchases, by = GAME_JOIN_KEYS$game_round_role) %>%
+    tidyr::replace_na(replace = list(screw_card_small = FALSE, screw_card_large = FALSE))
 }
+
+game_round_data_get <- function() {
+  game_events <- game_events_load()
+  player_investments <- game_player_investments_load()
+  players <- game_players_load()
+  
+  game_keys <- game_keys_get(
+    game_events = game_events,
+    players = players
+  )
+  
+  game_role <- game_keys$game_role
+  game_round <- game_keys$game_round
+  game_round_role <- game_keys$game_round_role
+  
+  game_chat_event_count_by_round <- game_chat_event_count_by_round_get(
+    game_events = game_events,
+    game_round_role = game_round_role
+  )
+  
+  game_invest_system_health_by_round <- game_invest_system_health_by_round_get(
+    player_investments = player_investments,
+    game_round_role = game_round_role
+  )
+  
+  game_system_health_at_round_start <- game_system_health_at_round_start_get(game_events)
+  
+  game_trades_accepted_count_by_round <- game_trades_accepted_count_by_round_get(
+    game_events,
+    game_round_role = game_round_role
+  )
+  
+  game_phase_duration_by_round <- game_phase_duration_by_round_get(game_events)
+  
+  game_end_player_points <- game_end_player_points_get(
+    game_events,
+    roles = game_keys$role
+  )
+  
+  game_bot_statistics <- game_bot_statistics_get(
+    game_events,
+    game_role = game_role
+  )
+  
+  game_player_used_screw_cards_by_round <- game_player_used_screw_cards_by_round_get(
+    game_events,
+    game_round_role = game_round_role
+  )
+  
+  stopifnot(nrow(game_role) == nrow(game_end_player_points))
+  stopifnot(nrow(game_role) == nrow(game_bot_statistics))
+
+  stopifnot(nrow(game_round) == nrow(game_system_health_at_round_start))
+  stopifnot(nrow(game_round) == nrow(game_phase_duration_by_round))
+  
+  stopifnot(nrow(game_round_role) == nrow(game_chat_event_count_by_round))
+  stopifnot(nrow(game_round_role) == nrow(game_invest_system_health_by_round))
+  stopifnot(nrow(game_round_role) == nrow(game_player_used_screw_cards_by_round))
+  stopifnot(nrow(game_round_role) == nrow(game_trades_accepted_count_by_round))
+  
+  game_role_key <- GAME_JOIN_KEYS$game_role
+  game_round_key <- GAME_JOIN_KEYS$game_round
+  game_round_role_key <- GAME_JOIN_KEYS$game_round_role
+  
+  game_role_data <- game_role %>%
+    dplyr::left_join(
+      game_end_player_points,
+      by = game_role_key
+    ) %>%
+    dplyr::left_join(
+      game_bot_statistics,
+      by = game_role_key
+    )
+  
+  game_round_role_data <- game_round_role %>%
+    dplyr::left_join(
+      game_system_health_at_round_start,
+      by = game_round_key
+    ) %>%
+    dplyr::left_join(
+      game_phase_duration_by_round,
+      by = game_round_key
+    ) %>%
+    dplyr::left_join(
+      game_chat_event_count_by_round,
+      by = game_round_role_key
+    ) %>%
+    dplyr::left_join(
+      game_invest_system_health_by_round,
+      by = game_round_role_key
+    ) %>%
+    dplyr::left_join(
+      game_trades_accepted_count_by_round,
+      by = game_round_role_key
+    ) %>%
+    dplyr::left_join(
+      game_player_used_screw_cards_by_round,
+      by = game_round_role_key
+    )
+}
+
+game_round_role_data <- game_round_data_get()
