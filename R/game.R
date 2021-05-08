@@ -1,42 +1,62 @@
 library(magrittr)
 
 game_events_load <- function(roles) {
-  readr::read_csv("input/raw/2021-03/games/1/processed/gameEvent.csv") %>%
-    dplyr::mutate_at(dplyr::vars(role), factor)
+  readr::read_csv("input/raw/2021-03/games/1/processed/gameEvent.csv")
 }
 
 players_load <- function() {
   readr::read_csv("input/raw/2021-03/games/1/processed/player.csv")
 }
 
+player_investments_load <- function() {
+  readr::read_csv("input/raw/2021-03/games/1/processed/playerInvestment.csv")
+}
+
 game_events <- game_events_load()
 players <- players_load()
+player_investments <- player_investments_load()
 
 ROLES <- unique(players$role) 
 GAME_IDS <- unique(players$gameId)
 PKS <- tidyr::crossing(
   tibble::tibble(gameId = GAME_IDS),
   tibble::tibble(role = ROLES))
-GAME_EVENTS_IDS <- tidyr::crossing(game_events %>% dplyr::distinct(gameId, roundFinal) %>% dplyr::rename(round = "roundFinal"), tibble::tibble(role = ROLES))
+GAME_EVENTS_IDS <- tidyr::crossing(
+  game_events %>% 
+    dplyr::distinct(gameId, roundFinal) %>% 
+    dplyr::rename(round = "roundFinal"),
+  tibble::tibble(role = ROLES))
+
+JOIN_CRITERIA_ROUND_FINAL <- c("gameId" = "gameId", "round" = "roundFinal", "role" = "role")
 
 # Chat?
 game_count_chat_events_by_round_get <- function(game_events) {
-  game_events %>%
+  chat_counts <- game_events %>%
     dplyr::filter(type == "sent-chat-message") %>%
     dplyr::filter(role != "Server") %>%
-    dplyr::select(id, gameId, role)
     dplyr::group_by(gameId, roundFinal, role) %>%
-    dplyr::summarise(chat_message_count = dplyr::n()) %>%
-    tidyr::complete(gameId, role, fill = list(chat_message_count = 0))
+    dplyr::summarise(chat_message_count = dplyr::n())
+  GAME_EVENTS_IDS %>%
+    dplyr::left_join(chat_counts, by = JOIN_CRITERIA_ROUND_FINAL) %>%
+    tidyr::replace_na(replace = list(chat_message_count = 0))
 }
 
 game_count_chat_events_by_round <- game_count_chat_events_by_round_get(game_events)
 
 # SH?
-game_invest_system_health_by_round_start
+game_invest_system_health_get <- function(player_investments) {
+  system_health <- player_investments %>%
+    dplyr::filter(name == "finalInvestment") %>%
+    dplyr::filter(investment == "systemHealth") %>%
+    dplyr::select(gameId, roundFinal, role, sh = value)
+  GAME_EVENTS_IDS %>%
+    dplyr::left_join(system_health, by = JOIN_CRITERIA_ROUND_FINAL)
+}
+
+game_invest_system_health <- game_invest_system_health_get(player_investments)
 
 #
-game_invest_system_health_by_round_end <- function(player_investments) {
+game_system_health_at_round_start <- function(player_investments) {
   
 }
 
@@ -63,7 +83,7 @@ game_bot_statistics_get <- function(game_events) {
     dplyr::mutate(role = purrr::map_chr(payload, function(p) jsonlite::fromJSON(p)$role)) %>%
     dplyr::distinct(gameId, role) %>%
     dplyr::mutate(bot = TRUE) 
-  bct <- PKS %>%
+  PKS %>%
     dplyr::left_join(partial_bct, by = c("gameId" = "gameId", "role" = "role")) %>%
     dplyr::mutate(bot=tidyr::replace_na(bot, FALSE)) %>%
     dplyr::group_by(gameId) %>%
