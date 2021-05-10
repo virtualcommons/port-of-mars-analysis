@@ -63,6 +63,53 @@ GAME_JOIN_KEYS <- list(
   )
 )
 
+GAME_METADATA <- tibble::tribble(
+  ~dest, ~desc, ~is_by_round,
+  "tournament", "name of tournament (corresponds to directory tournament input was put into)", FALSE,
+  "tournament_round", "round of tournament", FALSE,
+  "game_id", "id of game in db", FALSE,
+  "role", "role of player", FALSE,
+  "participant_id", "id of participant in db and qualtrics", FALSE,
+  "invite_id", "id of invite in db and qualtrics", FALSE,
+  "chat_message_count", "number of chat messages entered by end of round", TRUE,
+  "investment_system_health", "time units of investment into system health in beginning of round", TRUE,
+  "system_health", "system health at the beginning of the round", TRUE,
+  "trades_accepted_count", "trades accepted by end of round", TRUE,
+  "duration_new_round", "duration of new round phase in seconds", TRUE,
+  "duration_events", "duration of mars event phase in seconds", TRUE,
+  "duration_invest", "duration of invest phase in seconds", TRUE,
+  "duration_trade", "duration of trade phase in seconds", TRUE,
+  "duration_purchase", "duration of purchase phase in seconds", TRUE,
+  "duration_discard", "duration of discard phase in seconds", TRUE,
+  "survived", "players survived the game (system health never went to zero)", FALSE,
+  "points", "player points at end of game", FALSE,
+  "won", "player won the game", FALSE,
+  "bot", "was role a bot at any point in the game", FALSE,
+  "anyBot", "was any role a bot at any point in the game", FALSE,
+  "purchased_screw_card_small", "player purchased a small screw card", TRUE,
+  "purchased_screw_card_large", "player purchased a large screw card", TRUE,
+  "round_count", "maximum number of rounds", TRUE
+)
+
+game_metadata_expand <- function(max_game_rounds) {
+  GAME_METADATA %>%
+    dplyr::mutate(round = ifelse(is_by_round, max_game_rounds, 1)) %>%
+    dplyr::group_by(dest) %>%
+    tidyr::expand(round = seq(round), is_by_round, desc) %>%
+    dplyr::mutate(src = dest) %>%
+    dplyr::mutate(dest = ifelse(is_by_round, glue::glue("{dest}_round{round}", round = sprintf("%02d", round)), dest)) %>%
+    dplyr::select(-c(is_by_round, round)) %>%
+    dplyr::relocate(dest, src, desc) %>%
+    dplyr::mutate(origin = "game info")
+}
+
+game_round_count_get <- function(game_events, game_role) {
+  tidyr::crossing(
+    game_role,
+    game_events %>%
+      dplyr::summarize(round_count = max(roundFinal)))
+}
+
 # Chat? gameId, round
 game_chat_event_count_by_round_get <- function(game_events, game_round_role) {
   chat_counts <- game_events %>%
@@ -216,15 +263,15 @@ game_player_used_screw_cards_by_round_get <- function(game_events, game_round_ro
     dplyr::bind_cols(purrr::map_df(purchases$payload, get_purchases)) %>%
     dplyr::group_by(gameId, role, roundFinal) %>%
     dplyr::summarise(
-      screw_card_small = as.logical(max(small_screw_card)),
-      screw_card_large = as.logical(max(large_screw_card))) %>%
+      purchased_screw_card_small = as.logical(max(small_screw_card)),
+      purchased_screw_card_large = as.logical(max(large_screw_card))) %>%
     dplyr::rename(round = roundFinal)
   game_round_role %>%
     dplyr::left_join(purchases, by = GAME_JOIN_KEYS$game_round_role) %>%
-    tidyr::replace_na(replace = list(screw_card_small = FALSE, screw_card_large = FALSE))
+    tidyr::replace_na(replace = list(purchased_screw_card_small = FALSE, purchased_screw_card_large = FALSE))
 }
 
-tournament_round_load <- function(tournament_dir, tournament_round, max_game_rounds) {
+game_tournament_round_load <- function(tournament_dir, tournament_round, max_game_rounds) {
   base_path <- fs::path("input/raw/", tournament_dir, "games", tournament_round, "processed")
   game_events <- game_events_load(base_path)
   player_investments <- game_player_investments_load(base_path)
@@ -242,6 +289,11 @@ tournament_round_load <- function(tournament_dir, tournament_round, max_game_rou
   game_round <- game_keys$game_round
   game_round_role <- game_keys$game_round_role
   game_round_role_all <- game_keys$game_round_role_all
+  
+  round_count <- game_round_count_get(
+    game_events = game_events,
+    game_role = game_role
+  )
   
   chat_event_count_by_round <- game_chat_event_count_by_round_get(
     game_events = game_events,
@@ -292,6 +344,14 @@ tournament_round_load <- function(tournament_dir, tournament_round, max_game_rou
   game_round_key <- GAME_JOIN_KEYS$game_round
   game_round_role_key <- GAME_JOIN_KEYS$game_round_role
   
+  player_key_data <- players %>%
+    dplyr::select(gameId, participantId, inviteId, role) %>%
+    dplyr::rename(
+      game_id = gameId,
+      participant_id = participantId,
+      invite_id = inviteId
+    )
+  
   game_role_data <- game_role %>%
     dplyr::left_join(
       end_player_points,
@@ -329,7 +389,7 @@ tournament_round_load <- function(tournament_dir, tournament_round, max_game_rou
     ) %>%
     tidyr::pivot_wider(
       names_from = round,
-      names_glue = "{.value}_round{round}",
+      names_glue = "{.value}_round{sprintf('%02d', round)}",
       values_from = !c(gameId, round, role)
     )
   
@@ -341,23 +401,34 @@ tournament_round_load <- function(tournament_dir, tournament_round, max_game_rou
       tournament = tournament_dir,
       tournament_round = tournament_round  
     ) %>%
+    dplyr::left_join(
+      round_count,
+      by = game_role_key
+    ) %>%
     dplyr::rename(game_id = gameId) %>%
-    dplyr::relocate(tournament, tournament_round)
+    dplyr::left_join(
+      player_key_data,
+      by = c("game_id", "role")
+    ) %>%
+    dplyr::relocate(
+      tournament,
+      tournament_round,
+      participant_id,
+      invite_id
+    )
 }
 
-tournament_load <- function(tournament_dir, max_game_rounds) {
+game_tournament_load <- function(tournament_dir, max_game_rounds) {
   tournament_prefix <- fs::path("input/raw", tournament_dir, "games")
-  tournament_rounds <- fs::path_file(fs::dir_ls(tournament_prefix))
+  tournament_rounds <- as.integer(fs::path_file(fs::dir_ls(tournament_prefix)))
   
   dplyr::bind_rows(purrr::map(
     tournament_rounds,
     function(tournament_round) 
-      tournament_round_load(
+      game_tournament_round_load(
         tournament_dir = tournament_dir,
         tournament_round = tournament_round,
         max_game_rounds = max_game_rounds
       )
   ))
 }
-
-tournament_data <- tournament_load(tournament_dir = "2021-03", max_game_rounds = 11)
