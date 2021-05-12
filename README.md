@@ -47,3 +47,6 @@ input
             ├── post.csv
             └── pre.csv
 ```
+
+
+that will mean doenloading the appropiate tournament and survey data and then placing that data into the locations shown above.
