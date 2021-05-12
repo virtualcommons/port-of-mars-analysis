@@ -50,3 +50,11 @@ input
 
 
 that will mean doenloading the appropiate tournament and survey data and then placing that data into the locations shown above.
+
+# Running the Workflow
+
+You can run the workflow by running `main.R` in RStudio.
+
+# Requirements
+
+You will need a recent version of R with `tidyverse` installed (`install.packages("tidyverse")`).
