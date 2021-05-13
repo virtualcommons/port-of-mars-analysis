@@ -6,6 +6,7 @@ chat_messages_tournament_load <- function(tournament_dir) {
     function(tournament_round) {
       readr::read_csv(fs::path(base_dir, tournament_round, "processed/chatMessages.csv")) %>%
         dplyr::mutate(tournament = tournament_dir, tournament_round = tournament_round) %>%
+        dplyr::rename(game_id = gameId) %>%
         dplyr::relocate(tournament, tournament_round)
     }
   ))
