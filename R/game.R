@@ -1,5 +1,10 @@
 library(magrittr)
 
+#' Load game events from file
+#' 
+#' @param prefix the directory to the game events file (gameEvents.csv)
+#' 
+#' @example game_events_load("input/raw/2021-03/game/1/processed")
 game_events_load <- function(prefix) {
   readr::read_csv(fs::path(prefix, "gameEvent.csv")) %>%
     # first record in dump is recorded twice so remove one with improperly serialized snapshot
