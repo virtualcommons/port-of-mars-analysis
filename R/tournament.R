@@ -15,7 +15,7 @@ tournament_load <- function(tournament_dir, max_game_rounds) {
 tournament_write <- function(tournament_dir, tournament) {
   path <- fs::path("output", tournament_dir)
   fs::dir_create(path, recurse = TRUE)
-  readr::write_csv(tournament, fs::path(path, "tournament.csv"))
+  readr::write_csv(tournament, fs::path(path, "tournament.csv"), na="")
 }
 
 tournament_codebook_create <- function(max_game_rounds) {
@@ -35,5 +35,5 @@ tournament_codebook_create <- function(max_game_rounds) {
 tournament_codebook_write <- function(tournament_dir, tournament_codebook) {
   path <- fs::path("output", tournament_dir)
   fs::dir_create(path, recurse = TRUE)
-  readr::write_csv(tournament_codebook, fs::path(path, "tournament_codebook.csv"))  
+  readr::write_csv(tournament_codebook, fs::path(path, "tournament_codebook.csv"), na="")  
 }
