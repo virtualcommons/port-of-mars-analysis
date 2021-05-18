@@ -1,3 +1,4 @@
+source("R/chat_messages.R")
 source("R/game.R")
 source("R/survey.R")
 source("R/tournament.R")
