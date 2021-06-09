@@ -6,8 +6,7 @@ tournament_load <- function(tournament_dir, max_game_rounds) {
       dplyr::select(tournament, tournament_round, participant_id, invite_id))
   
   assertthat::assert_that(nrow(game_tournament) == nrow(survey_tournament))
-  # assertthat::assert_that(setdiff(game_tournament$participant_id, survey_tournament$participant_id) == character(0))
-  
+
   game_tournament %>%
     dplyr::inner_join(survey_tournament, by = c("tournament", "tournament_round", "participant_id", "invite_id"))
 }

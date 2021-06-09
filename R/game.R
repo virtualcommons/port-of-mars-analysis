@@ -1,10 +1,20 @@
 library(magrittr)
 
+#' Load victory points from file
+#'
+#' @param prefix the directory to the game events file (victoryPoints.csv)
+#'
+#' @example victory_points_load("input/raw/2021-03/games/1/processed")
+victory_points_load <- function(prefix) {
+  readr::read_csv(fs::path(prefix, "victoryPoint.csv"))
+}
+
+
 #' Load game events from file
 #' 
 #' @param prefix the directory to the game events file (gameEvents.csv)
 #' 
-#' @example game_events_load("input/raw/2021-03/game/1/processed")
+#' @example game_events_load("input/raw/2021-03/games/1/processed")
 game_events_load <- function(prefix) {
   readr::read_csv(fs::path(prefix, "gameEvent.csv")) %>%
     # first record in dump is recorded twice so remove one with improperly serialized snapshot
@@ -88,9 +98,12 @@ GAME_METADATA <- tibble::tribble(
   "duration_discard", "duration of discard phase in seconds", TRUE,
   "survived", "players survived the game (system health never went to zero)", FALSE,
   "points", "player points at end of game", FALSE,
+  "points_end", "player points at end of round", TRUE,
   "won", "player won the game", FALSE,
   "bot", "was role a bot at any point in the game", FALSE,
   "anyBot", "was any role a bot at any point in the game", FALSE,
+  "bot_duration", "seconds a bot was active in a game", FALSE,
+  "bot_at_end_of_game", "was the bot active at the end of the game", FALSE,
   "purchased_screw_card_small", "player purchased a small screw card", TRUE,
   "purchased_screw_card_large", "player purchased a large screw card", TRUE,
   "round_count", "maximum number of rounds", TRUE
@@ -213,6 +226,29 @@ game_phase_duration_by_round_get <- function(game_events) {
     dplyr::rename(duration_new_round = duration_newRound)
 }
 
+game_victory_point_by_end_round_get <- function(victory_points, game_events, game_round_role) {
+  vp <- game_round_role %>%
+    dplyr::left_join(
+      game_events %>%
+        dplyr::rename(round = roundFinal) %>%
+        tidyr::expand(tidyr::nesting(gameId, round), role) %>%
+        dplyr::filter(role != 'Server') %>%
+        dplyr::left_join(
+          victory_points %>%
+            dplyr::group_by(gameId, roundFinal, role) %>%
+            dplyr::filter(id == max(id)) %>%
+            dplyr::filter(dplyr::row_number() == 1) %>%
+            dplyr::ungroup() %>%
+            dplyr::select(gameId, role, round = roundFinal, points = victoryPoints)
+        ) %>%
+        dplyr::group_by(gameId, role) %>%
+        dplyr::arrange(gameId, round, role) %>%
+        tidyr::fill(points, .direction = 'down'),
+       by = c("gameId", "round", "role")
+    )
+  vp
+}
+
 # points
 game_end_player_points_get <- function(game_events, roles) {
   role_points_get <- function(payload) {
@@ -227,12 +263,77 @@ game_end_player_points_get <- function(game_events, roles) {
   events_end_game %>%
     dplyr::bind_cols(purrr::map_dfr(events_end_game$payload, role_points_get)) %>%
     dplyr::select(-payload) %>%
-    tidyr::pivot_longer(cols = dplyr::all_of(roles), names_to="role", values_to="points") %>%
+    tidyr::pivot_longer(cols = dplyr::all_of(roles), names_to="role", values_to="points_end") %>%
     dplyr::group_by(gameId) %>%
     dplyr::mutate(survived = type == "entered-victory-phase") %>%
-    dplyr::mutate(won = (points == max(points)) & survived) %>%
+    dplyr::mutate(won = (points_end == max(points_end)) & survived) %>%
     dplyr::select(-type) %>%
     dplyr::ungroup()
+}
+
+game_bot_duration_get <- function(game_events) {
+  add_start_end_if_missing <- function(df) {
+    if (!("start" %in% colnames(df))) {
+      df <- df %>%
+        dplyr::mutate(start = lubridate::Date(nrow(df)))
+    }
+    if (!("end" %in% colnames(df))) {
+      df <- df %>%
+        dplyr::mutate(end = lubridate::Date(nrow(df)))
+    }
+    df
+  }
+
+  game_role_bot_takeovers <- game_events %>%
+    dplyr::filter(type %in% c("bot-control-taken", "bot-control-relinquished")) %>%
+    dplyr::arrange(id) %>%
+    dplyr::group_by(gameId, role) %>%
+    dplyr::filter(id == max(id)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(type == "bot-control-taken") %>%
+    dplyr::distinct(gameId, role)
+
+  missing_end_events <- tidyr::crossing(game_events %>%
+    dplyr::group_by(gameId) %>%
+    dplyr::filter(any(type %in% c("bot-control-taken", "bot-control-relinquished"))) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(type %in% c("entered-defeat-phase", "entered-victory-phase")) %>%
+    dplyr::mutate(type = "end") %>%
+    dplyr::select(gameId, type, timestamp),
+    tibble::tibble(role = setdiff(unique(game_events$role), 'Server'))) %>%
+    dplyr::inner_join(game_role_bot_takeovers) %>%
+    dplyr::mutate(end_game = TRUE)
+
+  bc <- game_events %>%
+    dplyr::select(gameId, type, payload, timestamp, role) %>%
+    dplyr::filter(type %in% c("bot-control-taken", "bot-control-relinquished")) %>%
+    dplyr::mutate(type = dplyr::if_else(type == "bot-control-taken", "start", type)) %>%
+    dplyr::mutate(type = dplyr::if_else(type == "bot-control-relinquished", "end", type)) %>%
+    dplyr::select(-payload) %>%
+    dplyr::group_by(gameId) %>%
+    dplyr::filter(any(type == "start")) %>%
+    dplyr::mutate(end_game = FALSE) %>%
+    dplyr::union_all(missing_end_events) %>%
+    dplyr::arrange(gameId, timestamp) %>%
+    dplyr::group_by(gameId, role) %>%
+    dplyr::mutate(end_game = any(end_game)) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(gameId, role, type) %>%
+    dplyr::mutate(n = dplyr::row_number()) %>%
+    dplyr::mutate(type = factor(type, levels = c("start", "end"))) %>%
+    # https://github.com/tidyverse/tidyr/issues/770
+    tidyr::pivot_wider(names_from = "type", values_from = "timestamp") %>%
+    add_start_end_if_missing() %>%
+    dplyr::mutate(duration = end - start) %>%
+    dplyr::group_by(gameId, role) %>%
+    dplyr::summarise(bot_duration = sum(duration), bot_at_end_of_game = any(end_game))
+
+  tidyr::crossing(
+    game_events %>% dplyr::distinct(gameId),
+    game_events %>% dplyr::distinct(role) %>% dplyr::filter(role != 'Server')
+  ) %>%
+    dplyr::left_join(bc) %>%
+    tidyr::replace_na(list(bot_duration = 0, bot_at_end_of_game = FALSE))
 }
 
 # bot, anyBotGroup
@@ -249,6 +350,17 @@ game_bot_statistics_get <- function(game_events, game_role) {
     dplyr::group_by(gameId) %>%
     dplyr::mutate(anyBot = as.logical(max(bot))) %>%
     dplyr::ungroup()
+}
+
+game_player_discards_by_round_get <- function(game_events, game_round_role) {
+  discards_by_round <- game_events %>%
+    dplyr::mutate(is_discard = type == "discarded-accomplishment") %>%
+    dplyr::filter(role != 'Server') %>%
+    dplyr::group_by(gameId, roundFinal, role) %>%
+    dplyr::summarise(discard_count = sum(is_discard))
+  game_round_role %>%
+    dplyr::left_join(discards_by_round) %>%
+    tidyr::replace_na(list(discard_count = 0))
 }
 
 # screw card small, screw card large
@@ -280,6 +392,7 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   base_path <- fs::path("input/raw/", tournament_dir, "games", tournament_round, "processed")
   game_events <- game_events_load(base_path)
   player_investments <- game_player_investments_load(base_path)
+  victory_points <- victory_points_load(base_path)
   players <- game_players_load(base_path)
   
   assertthat::assert_that(max(game_events$roundFinal) <= max_game_rounds)
@@ -318,12 +431,19 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   )
   
   phase_duration_by_round <- game_phase_duration_by_round_get(game_events)
-  
+
+  player_points_by_round <- game_victory_point_by_end_round_get(
+    victory_points = victory_points,
+    game_events = game_events,
+    game_round_role = game_round_role)
+
   end_player_points <- game_end_player_points_get(
     game_events,
     roles = game_keys$role
   )
   
+  bot_duration <- game_bot_duration_get(game_events)
+
   bot_statistics <- game_bot_statistics_get(
     game_events,
     game_role = game_role
@@ -335,6 +455,7 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   )
   
   assertthat::assert_that(nrow(game_role) == nrow(end_player_points))
+  assertthat::assert_that(nrow(game_role) == nrow(bot_duration))
   assertthat::assert_that(nrow(game_role) == nrow(bot_statistics))
 
   assertthat::assert_that(nrow(game_round) == nrow(system_health_at_round_start))
@@ -365,6 +486,10 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
     dplyr::left_join(
       bot_statistics,
       by = game_role_key
+    ) %>%
+    dplyr::left_join(
+      bot_duration,
+      by = game_role_key
     )
   
   game_round_role_data <- game_round_role_all %>%
@@ -390,6 +515,10 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
     ) %>%
     dplyr::left_join(
       player_used_screw_cards_by_round,
+      by = game_round_role_key
+    ) %>%
+    dplyr::left_join(
+      player_points_by_round,
       by = game_round_role_key
     ) %>%
     tidyr::pivot_wider(

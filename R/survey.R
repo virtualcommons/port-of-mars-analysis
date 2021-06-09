@@ -106,7 +106,7 @@ survey_round_end_renames <- tibble::tribble(
   "post__leader_role_pioneer", "leader_role_pioneer", "",
   "post__leader_role_politician", "leader_role_politician", "",
   "post__leader_role_researcher", "leader_role_researcher", "",
-  "post__leader_bc_group_adjusts_to_changes_well", "Q1_1", "Group members adjust well to the changes that happen in the game.",
+  "post__leader_bc_acting_friendly_and_approachable", "Q1_1", "Why do you consider them to be the leader? - Acting friendly and approachable",
   "post__leader_bc_welfare", "Q1_2", "Why do you consider them to be the leader? - Acting concerned for others' personal welfare",
   "post__leader_bc_supportive", "Q1_3", "Why do you consider them to be the leader? - Acting supportive when talking to others",
   "post__leader_bc_expectations_clear", "Q1_4", "Why do you consider them to be the leader? - Letting others know what was expected of them",
