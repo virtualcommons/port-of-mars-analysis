@@ -352,14 +352,22 @@ game_bot_statistics_get <- function(game_events, game_role) {
     dplyr::ungroup()
 }
 
-game_player_discards_by_round_get <- function(game_events, game_round_role) {
+game_player_discards_by_round_get <- function(game_events) {
+  # only include game rounds that have a discard phase
+  discard_key <- game_events %>%
+    dplyr::filter(role != 'Server') %>%
+    dplyr::filter(phaseFinal == 'discard') %>%
+    dplyr::rename(round = roundFinal) %>%
+    tidyr::expand(tidyr::nesting(gameId, round), role)
+
   discards_by_round <- game_events %>%
     dplyr::mutate(is_discard = type == "discarded-accomplishment") %>%
     dplyr::filter(role != 'Server') %>%
     dplyr::rename(round = roundFinal) %>%
     dplyr::group_by(gameId, round, role) %>%
     dplyr::summarise(discard_count = sum(is_discard))
-  game_round_role %>%
+
+  discard_key %>%
     dplyr::left_join(discards_by_round) %>%
     tidyr::replace_na(list(discard_count = 0))
 }
@@ -440,8 +448,7 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   )
 
   player_discards_by_round <- game_player_discards_by_round_get(
-    game_events = game_events,
-    game_round_role = game_round_role
+    game_events = game_events
   )
 
   end_player_points <- game_end_player_points_get(
