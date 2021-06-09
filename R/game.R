@@ -356,7 +356,8 @@ game_player_discards_by_round_get <- function(game_events, game_round_role) {
   discards_by_round <- game_events %>%
     dplyr::mutate(is_discard = type == "discarded-accomplishment") %>%
     dplyr::filter(role != 'Server') %>%
-    dplyr::group_by(gameId, roundFinal, role) %>%
+    dplyr::rename(round = roundFinal) %>%
+    dplyr::group_by(gameId, round, role) %>%
     dplyr::summarise(discard_count = sum(is_discard))
   game_round_role %>%
     dplyr::left_join(discards_by_round) %>%
@@ -435,7 +436,13 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   player_points_by_round <- game_victory_point_by_end_round_get(
     victory_points = victory_points,
     game_events = game_events,
-    game_round_role = game_round_role)
+    game_round_role = game_round_role
+  )
+
+  player_discards_by_round <- game_player_discards_by_round_get(
+    game_events = game_events,
+    game_round_role = game_round_role
+  )
 
   end_player_points <- game_end_player_points_get(
     game_events,
@@ -511,6 +518,10 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
     ) %>%
     dplyr::left_join(
       trades_accepted_count_by_round,
+      by = game_round_role_key
+    ) %>%
+    dplyr::left_join(
+      player_discards_by_round,
       by = game_round_role_key
     ) %>%
     dplyr::left_join(
