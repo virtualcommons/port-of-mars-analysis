@@ -58,7 +58,9 @@ There is some manual work needed to download tournament and survey data and plac
 - Launch RStudio
 - File -> Open project -> port-of-mars-analysis.Rproj
 - After opening the R project file, edit the main.R file in R/main.R and change line 7 tournament_dir <- "2021-03" to match the directory e.g. "2021-11"
-- In the console, type source("R/main.R") to run the workflow
+- Run main.R
+![image](https://user-images.githubusercontent.com/8737685/146257780-1163d160-8348-4009-85bb-f91910ca1f5f.png)
+
 - Check output/ to see if correct outputs have been generated
 
 # Requirements
