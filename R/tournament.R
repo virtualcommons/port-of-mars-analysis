@@ -6,7 +6,7 @@ tournament_load <- function(tournament_dir, max_game_rounds) {
       dplyr::select(tournament, tournament_round, participant_id, invite_id))
   
   assertthat::assert_that(nrow(game_tournament) == nrow(survey_tournament))
-
+  
   game_tournament %>%
     dplyr::inner_join(survey_tournament, by = c("tournament", "tournament_round", "participant_id", "invite_id"))
 }
@@ -28,7 +28,7 @@ tournament_codebook_create <- function(max_game_rounds) {
     game_metadata,
     survey_metadata
   ) %>%
-  dplyr::relocate(origin)
+    dplyr::relocate(origin)
 }
 
 tournament_codebook_write <- function(tournament_dir, tournament_codebook) {

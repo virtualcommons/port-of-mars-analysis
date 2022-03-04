@@ -19,7 +19,7 @@ me_augment_role <- function(name, description, roles) {
 
 me_augment_role_to_out_of_commission_events <- function(me) {
   roles <- c('Curator', 'Entrepreneur', 'Pioneer', 'Politician', 'Researcher')
-
+  
   me %>%
     dplyr::mutate(name = me_augment_role(name=name, description=description, roles=roles))
 }
@@ -45,5 +45,5 @@ me_write <- function(tournament) {
   me <- me_tournament_load(tournament)
   me_count_by_game_round <- me_count_by_game_round_get(me)
   readr::write_csv(me_count_by_game_round, fs::path("output", tournament, "mars_events_count_by_game_round.csv")
-)
+  )
 }

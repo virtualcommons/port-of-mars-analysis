@@ -244,7 +244,7 @@ game_victory_point_by_end_round_get <- function(victory_points, game_events, gam
         dplyr::group_by(gameId, role) %>%
         dplyr::arrange(gameId, round, role) %>%
         tidyr::fill(points, .direction = 'down'),
-       by = c("gameId", "round", "role")
+      by = c("gameId", "round", "role")
     )
   vp
 }
@@ -283,7 +283,7 @@ game_bot_duration_get <- function(game_events) {
     }
     df
   }
-
+  
   game_role_bot_takeovers <- game_events %>%
     dplyr::filter(type %in% c("bot-control-taken", "bot-control-relinquished")) %>%
     dplyr::arrange(id) %>%
@@ -292,18 +292,18 @@ game_bot_duration_get <- function(game_events) {
     dplyr::ungroup() %>%
     dplyr::filter(type == "bot-control-taken") %>%
     dplyr::distinct(gameId, role)
-
+  
   missing_end_events <- tidyr::crossing(game_events %>%
-    dplyr::group_by(gameId) %>%
-    dplyr::filter(any(type %in% c("bot-control-taken", "bot-control-relinquished"))) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(type %in% c("entered-defeat-phase", "entered-victory-phase")) %>%
-    dplyr::mutate(type = "end") %>%
-    dplyr::select(gameId, type, timestamp),
-    tibble::tibble(role = setdiff(unique(game_events$role), 'Server'))) %>%
+                                          dplyr::group_by(gameId) %>%
+                                          dplyr::filter(any(type %in% c("bot-control-taken", "bot-control-relinquished"))) %>%
+                                          dplyr::ungroup() %>%
+                                          dplyr::filter(type %in% c("entered-defeat-phase", "entered-victory-phase")) %>%
+                                          dplyr::mutate(type = "end") %>%
+                                          dplyr::select(gameId, type, timestamp),
+                                        tibble::tibble(role = setdiff(unique(game_events$role), 'Server'))) %>%
     dplyr::inner_join(game_role_bot_takeovers) %>%
     dplyr::mutate(end_game = TRUE)
-
+  
   bc <- game_events %>%
     dplyr::select(gameId, type, payload, timestamp, role) %>%
     dplyr::filter(type %in% c("bot-control-taken", "bot-control-relinquished")) %>%
@@ -327,7 +327,7 @@ game_bot_duration_get <- function(game_events) {
     dplyr::mutate(duration = end - start) %>%
     dplyr::group_by(gameId, role) %>%
     dplyr::summarise(bot_duration = sum(duration), bot_at_end_of_game = any(end_game))
-
+  
   tidyr::crossing(
     game_events %>% dplyr::distinct(gameId),
     game_events %>% dplyr::distinct(role) %>% dplyr::filter(role != 'Server')
@@ -359,14 +359,14 @@ game_player_discards_by_round_get <- function(game_events) {
     dplyr::filter(phaseFinal == 'discard') %>%
     dplyr::rename(round = roundFinal) %>%
     tidyr::expand(tidyr::nesting(gameId, round), role)
-
+  
   discards_by_round <- game_events %>%
     dplyr::mutate(is_discard = type == "discarded-accomplishment") %>%
     dplyr::filter(role != 'Server') %>%
     dplyr::rename(round = roundFinal) %>%
     dplyr::group_by(gameId, round, role) %>%
     dplyr::summarise(discard_count = sum(is_discard))
-
+  
   discard_key %>%
     dplyr::left_join(discards_by_round) %>%
     tidyr::replace_na(list(discard_count = 0))
@@ -440,24 +440,24 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   )
   
   phase_duration_by_round <- game_phase_duration_by_round_get(game_events)
-
+  
   player_points_by_round <- game_victory_point_by_end_round_get(
     victory_points = victory_points,
     game_events = game_events,
     game_round_role = game_round_role
   )
-
+  
   player_discards_by_round <- game_player_discards_by_round_get(
     game_events = game_events
   )
-
+  
   end_player_points <- game_end_player_points_get(
     game_events,
     roles = game_keys$role
   )
   
   bot_duration <- game_bot_duration_get(game_events)
-
+  
   bot_statistics <- game_bot_statistics_get(
     game_events,
     game_role = game_role
@@ -471,7 +471,7 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
   assertthat::assert_that(nrow(game_role) == nrow(end_player_points))
   assertthat::assert_that(nrow(game_role) == nrow(bot_duration))
   assertthat::assert_that(nrow(game_role) == nrow(bot_statistics))
-
+  
   assertthat::assert_that(nrow(game_round) == nrow(system_health_at_round_start))
   assertthat::assert_that(nrow(game_round) == nrow(phase_duration_by_round))
   
@@ -546,7 +546,7 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
     )
   
   assertthat::assert_that(nrow(game_role_data) == nrow(game_round_role_data))
-
+  
   game_round_role_data %>%
     dplyr::left_join(game_role_data, by = game_role_key) %>%
     dplyr::mutate(
