@@ -68,4 +68,4 @@ There is some manual work needed to download tournament and survey data and plac
 You will need a recent version of R with `tidyverse` installed (`install.packages("tidyverse")`).
 
 # Important Notes
-Avoid saving .Rdata when a dialog prompts to do so. Caching of data may cause unexpected problems when generatig output csv files.
+Avoid saving .Rdata when a dialog prompts to do so. Caching of data may cause unexpected problems when generating output csv files.
