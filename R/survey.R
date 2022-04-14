@@ -132,8 +132,8 @@ survey_cultural_load <- function(prefix) {
   colnames(data) <- headers
   data %>%
     dplyr::mutate(
-      StartDate = lubridate::mdy_hm(StartDate),
-      EndDate = lubridate::mdy_hm(EndDate)) %>%
+      StartDate = lubridate::ymd_hms(StartDate),
+      EndDate = lubridate::ymd_hms(EndDate)) %>%
     dplyr::rename(gender = Q2) %>%
     dplyr::mutate(
       man = gender == 2
