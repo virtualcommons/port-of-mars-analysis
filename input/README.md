@@ -13,11 +13,10 @@ where games/1 is the first tournament round, games/2 is the second tournament ro
 │       │   ├── 2
 │       │   └── 3
 │       └── surveys
-│           ├── cultural.csv
 │           ├── post.csv
+│           ├── pre-after-round1.csv
 │           └── pre.csv
 └── README.md
-
-- **pre** survey is the initial survey taken before round 1 starts
-- **cultural** survey is the second and later survey taken before round 2,3,... starts
-- **post** survey is the exit game survey, univeral across all rounds
+- **pre.csv** is the initial survey taken before round 1 starts
+- **pre-after-round1.csv** is the second and later survey taken before round 2,3,... starts
+- **post.csv** is the exit game survey, univeral across all rounds
