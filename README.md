@@ -65,7 +65,15 @@ There is some manual work needed to download tournament and survey data and plac
 
 # Requirements
 
-You will need a recent version of R with `tidyverse` installed (`install.packages("tidyverse")`).
+You will need a recent version of R and [RStudio Desktop](https://posit.co/download/rstudio-desktop/) with `tidyverse` installed (`install.packages("tidyverse")`).
+
+## macos install
+
+use macports to install `R` and `openmpi-clang14`
+
+```
+% port install R openmpi-clang14
+```
 
 # Important Notes
 Avoid saving .Rdata when a dialog prompts to do so. Caching of data may cause unexpected problems when generating output csv files.
