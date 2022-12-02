@@ -41,9 +41,9 @@ me_count_by_game_round_get <- function(me) {
     tidyr::pivot_wider(names_from = name, values_from = n, values_fill = 0, names_sort = TRUE)
 }
 
-me_write <- function(tournament) {
-  me <- me_tournament_load(tournament)
+me_write <- function(tournament_dir) {
+  me <- me_tournament_load(tournament_dir)
   me_count_by_game_round <- me_count_by_game_round_get(me)
-  readr::write_csv(me_count_by_game_round, fs::path("output", tournament, "mars_events_count_by_game_round.csv")
+  readr::write_csv(me_count_by_game_round, fs::path("output", tournament_dir, "mars_events_count_by_game_round.csv")
   )
 }

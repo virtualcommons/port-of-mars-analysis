@@ -3,9 +3,9 @@
 # dataframe and provides helper functions to write that dataframe out
 
 tournament_load <- function(tournament_dir, max_game_rounds) {
-  game_tournament <- game_tournament_load(tournament_dir = tournament_dir, max_game_rounds = max_game_rounds)
+  game_tournament <- game_tournament_load(tournament_dir, max_game_rounds)
   survey_tournament <- survey_tournament_load(
-    tournament_dir = tournament_dir,
+    tournament_dir,
     game_tournament_keys = game_tournament %>% 
       dplyr::select(tournament, tournament_round, participant_id, invite_id))
   
@@ -22,7 +22,7 @@ tournament_write <- function(tournament_dir, tournament) {
 }
 
 tournament_codebook_create <- function(max_game_rounds) {
-  game_metadata <- game_metadata_expand(max_game_rounds = max_game_rounds)
+  game_metadata <- game_metadata_expand(max_game_rounds)
   survey_metadata <- dplyr::bind_rows(
     survey_pre_renames,
     survey_pregame_after_round1_renames,

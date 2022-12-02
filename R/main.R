@@ -48,15 +48,15 @@ source("R/tournament.R")
 # │       └── README.md
 
 
-tournament_dir <- "2021-11"
+tournament_dir <- "2022-02"
 max_game_rounds <- 15
 # max_game_rounds should be inferred ?
-tournament <- tournament_load(tournament_dir = tournament_dir, max_game_rounds) 
+tournament <- tournament_load(tournament_dir, max_game_rounds) 
 tournament_codebook <- tournament_codebook_create(max_game_rounds)
 
-tournament_write(tournament = tournament, tournament_dir = tournament_dir)
-tournament_codebook_write(tournament_codebook = tournament_codebook, tournament_dir = tournament_dir)
-me_write(tournament = tournament_dir)
+tournament_write(tournament_dir, tournament)
+tournament_codebook_write(tournament_dir, tournament_codebook)
+me_write(tournament_dir)
 
 chat_messages_tournament <- chat_messages_tournament_load(tournament_dir = tournament_dir)
 chat_messages_tournament_save(
