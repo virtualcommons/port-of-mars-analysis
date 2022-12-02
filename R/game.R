@@ -326,14 +326,14 @@ game_bot_duration_get <- function(game_events) {
     add_start_end_if_missing() %>%
     dplyr::mutate(duration = end - start) %>%
     dplyr::group_by(gameId, role) %>%
-    dplyr::summarise(bot_duration = sum(duration), bot_at_end_of_game = any(end_game))
+    dplyr::summarise(bot_duration = ifelse(is.na(sum(duration)), 0, sum(duration)), 
+                     bot_at_end_of_game = ifelse(is.na(any(end_game)), FALSE, any(end_game)))
   
   tidyr::crossing(
     game_events %>% dplyr::distinct(gameId),
     game_events %>% dplyr::distinct(role) %>% dplyr::filter(role != 'Server')
   ) %>%
-    dplyr::left_join(bc) %>%
-    tidyr::replace_na(list(bot_duration = 0, bot_at_end_of_game = FALSE))
+    dplyr::left_join(bc)
 }
 
 # bot, anyBotGroup
