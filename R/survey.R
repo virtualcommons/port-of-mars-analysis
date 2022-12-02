@@ -268,7 +268,7 @@ survey_join_keys <- c(
 )
 
 survey_tournament_load <- function(tournament_dir, game_tournament_keys) {
-  path <- fs::path("input/raw", tournament_dir, "surveys")
+  path <- fs::path("input/", tournament_dir, "surveys")
   pre <- survey_pre_load(path)
   pregame_after_round1 <- survey_pregame_after_round1_load(path)
   post <- survey_round_end_load(path)

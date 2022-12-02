@@ -1,5 +1,5 @@
 chat_messages_tournament_load <- function(tournament_dir) {
-  base_dir <- fs::path("input/raw", tournament_dir, "games")
+  base_dir <- fs::path("input/", tournament_dir, "games")
   tournament_rounds <- as.integer(fs::path_file(fs::dir_ls(base_dir)))
   dplyr::bind_rows(purrr::map(
     tournament_rounds,

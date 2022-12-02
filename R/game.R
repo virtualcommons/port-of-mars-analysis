@@ -4,7 +4,7 @@ library(magrittr)
 #'
 #' @param prefix the directory to the game events file (victoryPoints.csv)
 #'
-#' @example victory_points_load("input/raw/2021-03/games/1/processed")
+#' @example victory_points_load("input/2021-03/games/1/processed")
 victory_points_load <- function(prefix) {
   readr::read_csv(fs::path(prefix, "victoryPoint.csv"))
 }
@@ -14,7 +14,7 @@ victory_points_load <- function(prefix) {
 #' 
 #' @param prefix the directory to the game events file (gameEvents.csv)
 #' 
-#' @example game_events_load("input/raw/2021-03/games/1/processed")
+#' @example game_events_load("input/2021-03/games/1/processed")
 game_events_load <- function(prefix) {
   readr::read_csv(fs::path(prefix, "gameEvent.csv")) %>%
     # first record in dump is recorded twice so remove one with improperly serialized snapshot
@@ -398,7 +398,7 @@ game_player_used_screw_cards_by_round_get <- function(game_events, game_round_ro
 }
 
 game_tournament_round_load <- function(tournament_dir, tournament_round, max_game_rounds) {
-  base_path <- fs::path("input/raw/", tournament_dir, "games", tournament_round, "processed")
+  base_path <- fs::path("input/", tournament_dir, "games", tournament_round, "processed")
   game_events <- game_events_load(base_path)
   player_investments <- game_player_investments_load(base_path)
   victory_points <- victory_points_load(base_path)
@@ -571,7 +571,7 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
 }
 
 game_tournament_load <- function(tournament_dir, max_game_rounds) {
-  tournament_prefix <- fs::path("input/raw", tournament_dir, "games")
+  tournament_prefix <- fs::path("input/", tournament_dir, "games")
   tournament_rounds <- as.integer(fs::path_file(fs::dir_ls(tournament_prefix)))
   
   dplyr::bind_rows(purrr::map(

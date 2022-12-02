@@ -1,5 +1,5 @@
 me_tournament_load <- function(tournament) {
-  tournament_dir <- fs::path("input/raw", tournament, "games")
+  tournament_dir <- fs::path("input/", tournament, "games")
   tournament_rounds <- as.integer(fs::path_file(fs::dir_ls(tournament_dir)))
   mars_events <- purrr::map(tournament_rounds, ~ me_tournament_round_load(
     tournament_dir = tournament_dir,
