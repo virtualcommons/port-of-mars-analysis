@@ -1,3 +1,7 @@
+# ==== INTRODUCTION ====
+# assembles individual games in tournament rounds into a single "tournament"
+# dataframe and provides helper functions to write that dataframe out
+
 tournament_load <- function(tournament_dir, max_game_rounds) {
   game_tournament <- game_tournament_load(tournament_dir = tournament_dir, max_game_rounds = max_game_rounds)
   survey_tournament <- survey_tournament_load(

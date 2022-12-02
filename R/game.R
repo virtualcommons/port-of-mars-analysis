@@ -1,5 +1,15 @@
 library(magrittr)
 
+####################################################################
+#
+# ==== INTRODUCTION ====
+# 
+# functions to parse, aggregate re-process individual games in a tournament
+# reads files from the `games` directory.
+# 
+# TODO: add more documentation for important methods and extension points
+
+
 #' Load victory points from file
 #'
 #' @param prefix the directory to the game events file (victoryPoints.csv)
@@ -141,7 +151,13 @@ game_chat_event_count_by_round_get <- function(game_events, game_round_role) {
     tidyr::replace_na(replace = list(chat_message_count = 0))
 }
 
-# SH?
+
+#
+# ==== include data from playerInvestment.csv ====
+# filters playerInvestment.csv data for final investment decisions made by
+# players and reports the game id, round, role, and available time blocks
+# 
+
 game_invest_system_health_by_round_get <- function(player_investments, game_round_role) {
   system_health <- player_investments %>%
     dplyr::filter(name == "finalInvestment") %>%
@@ -569,6 +585,12 @@ game_tournament_round_load <- function(tournament_dir, tournament_round, max_gam
       invite_id
     )
 }
+
+
+#
+# ==== entry point from tournament ====
+# Generates a `game_tournament` data frame that composes and loads game
+# data frames for each tournament round (1, 2, 3, ..., N)
 
 game_tournament_load <- function(tournament_dir, max_game_rounds) {
   tournament_prefix <- fs::path("input/", tournament_dir, "games")
