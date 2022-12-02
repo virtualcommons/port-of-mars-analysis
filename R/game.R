@@ -147,7 +147,7 @@ game_invest_system_health_by_round_get <- function(player_investments, game_roun
     dplyr::filter(name == "finalInvestment") %>%
     dplyr::filter(investment == "systemHealth") %>%
     dplyr::rename(round = roundFinal) %>%
-    dplyr::select(gameId, round, role, investment_system_health = value)
+    dplyr::select(gameId, round, role, availableTimeBlocks, investment_system_health = value) # place additional playerInvestment.csv fields here
   game_round_role %>%
     dplyr::left_join(system_health, by = GAME_JOIN_KEYS$game_round_role)
 }
