@@ -20,8 +20,8 @@ tournament_write <- function(tournament_dir, tournament) {
 tournament_codebook_create <- function(max_game_rounds) {
   game_metadata <- game_metadata_expand(max_game_rounds = max_game_rounds)
   survey_metadata <- dplyr::bind_rows(
-    survey_cultural_renames,
-    survey_round_begin_renames,
+    survey_pre_renames,
+    survey_pregame_after_round1_renames,
     survey_round_end_renames
   ) %>% dplyr::filter(!(dest %in% c("participant_id", "invite_id")))
   dplyr::bind_rows(
