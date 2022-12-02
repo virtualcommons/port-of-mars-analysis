@@ -284,7 +284,8 @@ game_end_player_points_get <- function(game_events, roles) {
     dplyr::mutate(survived = type == "entered-victory-phase") %>%
     dplyr::mutate(won = (points_end == max(points_end)) & survived) %>%
     dplyr::select(-type) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    dplyr::distinct(gameId, role)
 }
 
 game_bot_duration_get <- function(game_events) {
