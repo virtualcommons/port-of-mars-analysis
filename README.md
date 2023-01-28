@@ -1,10 +1,14 @@
 # port-of-mars-analysis
 
+R analysis pipeline for Port of Mars "Mars Madness" tournament data from 2021/2022 archived at https://osf.io/vjcpe/
+
+Originally written by Calvin Pritchard.
+
 ## Layout of tournament round input files
 
-A tournament named 2021-03 should have files arranged to match:
+NOTE: subject to change as workflow is refined. The `1, 2, 3` below refer to the tournament round, e.g., 1st, 2nd, 3rd, round of the tournament etc.
 
-NOTE: this is subject to change as we refine the workflow. The `1, 2, 3` below refer to the tournament round.
+An input `tournament_dir` of `"2021-11"` should have files arranged to match the below diagram.
 
 ```
 input                          
@@ -59,23 +63,19 @@ Data files archived at OSF should work when uncompressed directly into the input
 
 - Launch RStudio
 - File -> Open project -> port-of-mars-analysis.Rproj
-- After opening the R project file, edit the main.R file in R/main.R and change line 7 tournament_dir <- "2021-03" to match the directory e.g. "2021-11"
+- After opening the R project file, edit the main.R file in R/main.R and change line 7 tournament_dir <- "2021-03" to match the directory e.g. "2022-02"
 - Run main.R
+
 ![image](https://user-images.githubusercontent.com/8737685/146257780-1163d160-8348-4009-85bb-f91910ca1f5f.png)
 
-- Check output/ to see if correct outputs have been generated
+Verify data files placed in `output/` (currently needs to be done manually). A sanity check expected outputs given initial inputs test harness would be ideal or some automated validation routine but may defer to Python analysis pipeline refactor.
 
 # Requirements
 
 You will need a recent version of R and [RStudio Desktop](https://posit.co/download/rstudio-desktop/) with `tidyverse` installed (`install.packages("tidyverse")`).
 
-## macos install
-
-use macports to install `R` and `openmpi-clang14`
-
-```
-% port install R openmpi-clang14
-```
+(NOTE: currently unable to install propery on macOS with apple silicon i.e., M1/M2 chip)
 
 # Important Notes
+
 Avoid saving .Rdata when a dialog prompts to do so. Caching of data may cause unexpected problems when generating output csv files.
