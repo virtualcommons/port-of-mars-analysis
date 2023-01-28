@@ -2,7 +2,7 @@
 
 R analysis pipeline for Port of Mars "Mars Madness" tournament data from 2021/2022 archived at https://osf.io/vjcpe/
 
-Originally written by Calvin Pritchard.
+Originally written by Calvin Pritchard with use cases driven by Marco Janssen. Subsequent contributions from Kelly Claborn, Christine Nguyen, Raksha Balakrishna, and Allen Lee.
 
 ## Layout of tournament round input files
 
@@ -53,7 +53,7 @@ input
 ```
 
 
-There is some manual work needed to download the tournament + survey data and set it up in the filesystem to match the above. Data freshly exported from the port of mars server via the [dump.sh script](https://github.com/virtualcommons/port-of-mars/blob/34cc5223353c7966a348ad638cac1e3fedb224bc/dump.sh) need to be merged with the survey data in `surveys/`
+Manual processing needed to download the tournament + survey data and set up a filesystem structure that matches the above. Data freshly exported from the port of mars server via the [dump.sh script](https://github.com/virtualcommons/port-of-mars/blob/34cc5223353c7966a348ad638cac1e3fedb224bc/dump.sh) need to be merged with the survey data in `surveys/`
 
 Data files archived at OSF should work when uncompressed directly into the input/ directory.
 
