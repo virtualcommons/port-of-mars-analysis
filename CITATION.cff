@@ -1,0 +1,47 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Port of Mars R Analysis Pipeline
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Calvin
+    family-names: Pritchard
+    email: pritchard.calvin@gmail.com
+    orcid: 'https://orcid.org/0000-0002-4557-8602'
+  - given-names: Kelly
+    family-names: Claborn
+    orcid: 'https://orcid.org/0000-0003-3799-1605'
+    email: kelly.claborn@asu.edu
+    affiliation: 'https://ror.org/03efmqc40'
+  - given-names: Raksha
+    family-names: Balakrishna
+    email: raksha.balakrishna@asu.edu
+    affiliation: 'https://ror.org/03efmqc40'
+  - given-names: Christine
+    family-names: Nguyễn
+    email: Christine.N.Nguyen@asu.edu
+  - given-names: Allen
+    family-names: Lee
+    email: allen.lee@asu.edu
+    affiliation: 'https://ror.org/03efmqc40'
+    orcid: 'https://orcid.org/0000-0002-6523-6079'
+  - given-names: Marco
+    family-names: Janssen
+    email: marco.janssen@asu.edu
+    affiliation: 'https://ror.org/03efmqc40'
+    orcid: 'https://orcid.org/0000-0002-1240-9052'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.6462509
+    description: Corresponding Port of Mars server code
+repository-code: 'https://github.com/virtualcommons/port-of-mars'
+url: 'https://portofmars.asu.edu'
+abstract: >-
+  R analysis pipeline for Port of Mars "Mars Madness"
+  2021/2022 tournaments 
+license: GPL-3.0-or-later
+date-released: '2023-01-28'
