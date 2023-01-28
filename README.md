@@ -1,4 +1,5 @@
 # port-of-mars-analysis
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7579645.svg)](https://doi.org/10.5281/zenodo.7579645)
 
 R analysis pipeline for Port of Mars "Mars Madness" tournament data from 2021/2022 archived at https://osf.io/vjcpe/
 
