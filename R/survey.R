@@ -11,6 +11,16 @@ survey_filter_has_fks <- function(data) {
     dplyr::filter(!is.na(participant_id) & !is.na(invite_id))
 }
 
+survey_remove_duplicates <- function(data) {
+  # remove duplicate survey records for participants
+  # should operate data before renaming due to relying on Progress which gets thrown out
+  data %>%
+    dplyr::arrange(pid, tid, dplyr::desc(Progress), dplyr::desc(EndDate)) %>%
+    dplyr::group_by(pid, tid) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup()
+}
+
 survey_pre_renames <- tibble::tribble(
   ~dest, ~src, ~desc,
   "participant_id", "pid", "",
@@ -133,7 +143,9 @@ survey_pre_load <- function(prefix) {
   data %>%
     dplyr::mutate(
       StartDate = lubridate::ymd_hms(StartDate),
-      EndDate = lubridate::ymd_hms(EndDate)) %>%
+      EndDate = lubridate::ymd_hms(EndDate)
+    ) %>%
+    survey_remove_duplicates() %>%
     dplyr::rename(gender = Q2) %>%
     dplyr::mutate(
       man = gender == 2
@@ -172,6 +184,7 @@ survey_pregame_after_round1_load <- function(prefix) {
   data <- readr::read_csv(path, skip = 2)
   colnames(data) <- headers
   data %>%
+    survey_remove_duplicates() %>%
     dplyr::rename(!!! kvs) %>%
     dplyr::select(!!! columns) %>%
     survey_filter_has_fks()
@@ -242,6 +255,7 @@ survey_round_end_load <- function(prefix) {
       leader_role_politician = Q2 == 4,
       leader_role_researcher = Q2 == 5
     ) %>%
+    survey_remove_duplicates() %>%
     dplyr::rename(!!! kvs) %>%
     dplyr::select(!!! columns) %>%
     survey_filter_has_fks()
@@ -298,9 +312,6 @@ survey_tournament_load <- function(tournament_dir, game_tournament_keys) {
     dplyr::left_join(pregame_after_round1, by = survey_join_keys) %>%
     dplyr::left_join(post, by = survey_join_keys)
   
-  dplyr::union_all(
-    r1,
-    r2plus
-  )
+  dplyr::bind_rows(r1, r2plus)
 }
 
