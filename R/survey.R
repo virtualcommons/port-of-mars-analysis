@@ -13,7 +13,7 @@ survey_filter_has_fks <- function(data) {
 
 survey_remove_duplicates <- function(data) {
   # remove duplicate survey records for participants
-  # should operate data before renaming due to relying on Progress which gets thrown out
+  # should operate on data before renaming due to reliance on Progress which gets thrown out
   data %>%
     dplyr::arrange(pid, tid, dplyr::desc(Progress), dplyr::desc(EndDate)) %>%
     dplyr::group_by(pid, tid) %>%
@@ -305,7 +305,7 @@ survey_tournament_load <- function(tournament_dir, game_tournament_keys) {
     # use the presurvey ones
     dplyr::select(-dplyr::starts_with("common__")) 
   
-  # do not attempt to join rpund 2+ responses if the file does not exist or is empty
+  # do not attempt to join round 2+ responses if the file does not exist or is empty
   pre_after_round1_path <- fs::path(path, "pre-after-round1.csv")
   if (fs::file_exists(pre_after_round1_path) && file.info(pre_after_round1_path)$size > 0) {
     pregame_after_round1 <- survey_pregame_after_round1_load(path)
