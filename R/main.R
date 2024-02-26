@@ -48,7 +48,7 @@ source("R/tournament.R")
 # │       └── README.md
 
 
-tournament_dir <- "2023-11"
+tournament_dir <- "2024-02"
 max_game_rounds <- 15
 # max_game_rounds should be inferred ?
 tournament <- tournament_load(tournament_dir, max_game_rounds) 

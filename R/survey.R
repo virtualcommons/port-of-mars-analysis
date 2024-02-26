@@ -284,7 +284,6 @@ survey_join_keys <- c(
 survey_tournament_load <- function(tournament_dir, game_tournament_keys) {
   path <- fs::path("input/", tournament_dir, "surveys")
   pre <- survey_pre_load(path)
-  pregame_after_round1 <- survey_pregame_after_round1_load(path)
   post <- survey_round_end_load(path)
   
   r1 <- game_tournament_keys %>% 
@@ -306,12 +305,19 @@ survey_tournament_load <- function(tournament_dir, game_tournament_keys) {
     # use the presurvey ones
     dplyr::select(-dplyr::starts_with("common__")) 
   
-  r2plus <- game_tournament_keys %>%
-    dplyr::filter(tournament_round > 1) %>%
-    dplyr::left_join(pre_plus1, by = survey_join_keys) %>%
-    dplyr::left_join(pregame_after_round1, by = survey_join_keys) %>%
-    dplyr::left_join(post, by = survey_join_keys)
+  # do not attempt to join rpund 2+ responses if the file does not exist or is empty
+  pre_after_round1_path <- fs::path(path, "pre-after-round1.csv")
+  if (fs::file_exists(pre_after_round1_path) && file.info(pre_after_round1_path)$size > 0) {
+    pregame_after_round1 <- survey_pregame_after_round1_load(path)
+    r2plus <- game_tournament_keys %>%
+      dplyr::filter(tournament_round > 1) %>%
+      dplyr::left_join(pre_plus1, by = survey_join_keys) %>%
+      dplyr::left_join(pregame_after_round1, by = survey_join_keys) %>%
+      dplyr::left_join(post, by = survey_join_keys)
   
-  dplyr::bind_rows(r1, r2plus)
+    dplyr::bind_rows(r1, r2plus)
+  } else {
+    return(r1)
+  }
 }
 
